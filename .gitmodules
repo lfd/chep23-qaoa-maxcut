@@ -1,0 +1,3 @@
+[submodule "arcs2022"]
+	path = arcs2022
+	url = git@github.com:lfd/arcs2022.git
