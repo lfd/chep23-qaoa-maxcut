@@ -16,8 +16,7 @@ from multiprocessing import Pool
 #logging.basicConfig(level=logging.INFO)
 
 from qat.opt.max_cut import MaxCut
-from qat.qpus.hook_linalg import LinAlg
-from qat.qpus.hook_mps import MPS
+from qat.qpus import LinAlg, MPS
 from qat.plugins import ScipyMinimizePlugin, QuameleonPlugin, Nnizer, NISQCompiler
 from qat.core.console import display
 from qat.opt.circuit_generator import CircuitGenerator
@@ -54,9 +53,9 @@ def create_new_graph(definition_file, num_nodes, density):
 
     return G
 
-def log_result(params, expectation, elapsed_time, num_nodes, density, p, i, simulator, single_qubit_noise_prob, two_qubit_noise_prob, sim_method):
+def log_result(params, expectation, elapsed_time, num_nodes, density, p, i, simulator, single_qubit_noise_prob, two_qubit_noise_prob, sim_method, sample):
     result_dir = f'experiments/nodes{num_nodes}/density{density}/problem{i:02}/'
-    result_dir_json = f'{result_dir}Results/{simulator}/{sim_method}/{single_qubit_noise_prob}/{two_qubit_noise_prob}/p{p:02}/'
+    result_dir_json = f'{result_dir}Results/{simulator}/{sim_method}/{single_qubit_noise_prob}/{two_qubit_noise_prob}/sample{sample:02}/p{p:02}/'
 
     if os.path.exists(result_dir_json):
         print(f'Overwriting results in {result_dir_json}')
@@ -79,12 +78,12 @@ def log_result(params, expectation, elapsed_time, num_nodes, density, p, i, simu
     if not os.path.exists(result_dir + 'results.csv'):
         with open(result_dir + 'results.csv', 'w') as f:
             writer = csv.writer(f, delimiter=',')
-            writer.writerow(['simulator', 'sim_method', 'single_qubit_noise_prob', 'two_qubit_noise_prob', 'num_qubits', 'graph_density', 'p', 'problem_idx', 'expectation', 'elapsed_time'])
+            writer.writerow(['simulator', 'sim_method', 'single_qubit_noise_prob', 'two_qubit_noise_prob', 'num_qubits', 'graph_density', 'p', 'problem_idx', 'expectation', 'elapsed_time', 'sample'])
 
     with open(result_dir + 'results.csv') as f:
         with open(result_dir + 'results.csv', 'a') as f:
             writer = csv.writer(f, delimiter=',')
-            writer.writerow([simulator, sim_method, single_qubit_noise_prob, two_qubit_noise_prob, num_nodes, density, p, i, expectation, elapsed_time])
+            writer.writerow([simulator, sim_method, single_qubit_noise_prob, two_qubit_noise_prob, num_nodes, density, p, i, expectation, elapsed_time, sample])
 
 def json_to_csv(result_dir):
     nums = re.findall(r'\d+[.]?\d*', result_dir)
@@ -264,7 +263,7 @@ def get_expectation_QLM(qubo, p, shots=512, simulator="ideal", sim_method="deter
 
     return execute_circ, best_results
 
-def run_MaxCutQAOA_QLM(density=0.5, num_nodes=20, p=1, simulator="ideal", problem_idx=0, initial_params=None, sim_method="stochastic", single_qubit_noise_prob=0, two_qubit_noise_prob=0):
+def run_MaxCutQAOA_QLM(density=0.5, num_nodes=20, p=1, simulator="ideal", problem_idx=0, initial_params=None, sim_method="stochastic", single_qubit_noise_prob=0, two_qubit_noise_prob=0, sample=0):
     G = load_or_create_graph(num_nodes, density, problem_idx)
     max_cut_problem = MaxCut(G)
 
@@ -290,12 +289,9 @@ def run_MaxCutQAOA_QLM(density=0.5, num_nodes=20, p=1, simulator="ideal", proble
     print(f"Minimum expectation: {minimum_expectation}")
     print(f"Simulation took: {elapsed_time} s")
 
-    log_result(optimal_params, minimum_expectation, elapsed_time, num_nodes, density, p, problem_idx, simulator, single_qubit_noise_prob, two_qubit_noise_prob, sim_method)
+    log_result(optimal_params, minimum_expectation, elapsed_time, num_nodes, density, p, problem_idx, simulator, single_qubit_noise_prob, two_qubit_noise_prob, sim_method, sample)
 
     return optimal_params
-
-def run_MaxCutQAOA_Qiskit(density=0.5, num_nodes=4, p=1, problem_indices=[0]):
-    pass
 
 def solve_exact(num_nodes, density, i):
     G = load_or_create_graph(num_nodes, density, i)
@@ -330,22 +326,29 @@ def init_params(p, params=None):
             params.append(0.0) # gamma
     return params
 
-def run_MaxCutQAOA_QLM_for_multiple_p(num_nodes, density, p_range, simulator, problem_idx, sim_method, single_noise_prob, two_noise_prob):
+def run_MaxCutQAOA_QLM_for_multiple_p(num_nodes, density, p_range, simulator, problem_idx, sim_method, single_noise_prob, two_noise_prob, sample):
     old_params = None
     for p in p_range:
         print(f"p={p}")
         initial_params = init_params(p, old_params)
-        old_params = run_MaxCutQAOA_QLM(num_nodes=num_nodes, density=density, p=p, simulator=simulator, problem_idx=problem_idx, initial_params=initial_params, sim_method=sim_method, single_qubit_noise_prob=single_noise_prob, two_qubit_noise_prob= two_noise_prob)
+        old_params = run_MaxCutQAOA_QLM(num_nodes=num_nodes, density=density, p=p, simulator=simulator, problem_idx=problem_idx, initial_params=initial_params, sim_method=sim_method, single_qubit_noise_prob=single_noise_prob, two_qubit_noise_prob= two_noise_prob, sample=sample)
 
 if __name__ == '__main__':
     pool = Pool()
-    for i in range(1,4):
-        for prob in np.linspace(0.00, 0.05, 6):
-            for noise in ["pauli-x-noise", "pauli-y-noise", "pauli-z-noise", "depolarizing-noise"]:
-                pool.apply_async(run_MaxCutQAOA_QLM_for_multiple_p, args=(5, 0.5, range(1,16), noise, i, "deterministic", prob, prob))
-        # pool.apply_async(run_MaxCutQAOA_QLM_for_multiple_p, args=(6, 0.4, range(1,16), "ideal", i, "stochastic", 0))
+    for r in range(10):
+        for noise in ["pauli-x-noise", "pauli-y-noise", "pauli-z-noise", "depolarizing-noise"]:
+            # IBM Kolkata Noise Model
+            pool.apply_async(run_MaxCutQAOA_QLM_for_multiple_p, args=(5, 0.5, range(1,13), noise, 2, "deterministic", 0.00032, 0.01091, r))
+
+            # IonQ
+            pool.apply_async(run_MaxCutQAOA_QLM_for_multiple_p, args=(5, 0.5, range(1,13), noise, 2, "deterministic", 0.004, 0.0002, r))
+
+            for err_prob in [0.001, 0.005, 0.01, 0.05]:
+                pool.apply_async(run_MaxCutQAOA_QLM_for_multiple_p, args=(5, 0.5, range(1,13), noise, 2, "deterministic", err_prob, err_prob, r))
+
     pool.close()
     pool.join()
-    # run_MaxCutQAOA_QLM_for_multiple_p(13, 0.3, range(1,16), "pauli-x-noise", 0, "deterministic", 0.01)
-    # solve_exact(6, 0.4, 0)
+
+    solve_exact(5, 0.5, 2)
+
 
