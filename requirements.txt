@@ -1,0 +1,5 @@
+networkx==3.1
+qiskit==0.43.1
+qiskit-optimization==0.5.0
+docplex==2.25.236
+scipy==1.10.1

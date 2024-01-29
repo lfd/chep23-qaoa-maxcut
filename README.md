@@ -12,4 +12,12 @@ Code accompanying the paper
   note = {to appear},
 }
 ```
-
+## Setup
+The code was tested on the [Qaptiva 800s](https://atos.net/en/solutions/high-performance-computing-hpc/quantum-computing-qaptiva) (V1.9.1) with Python 3.9.
+The Qaptiva system is required to execute the code.
+Additional libraries can be installed via pip. Creating a virtual environment is recommended:
+```
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
