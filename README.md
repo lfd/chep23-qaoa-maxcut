@@ -4,12 +4,16 @@ QAOA for MaxCut using noise models with varying gate error rate.
 
 Code accompanying the paper
 ```
-@inproceedings{franz23:chep:preprint,
+@article{franz:23:chep,
   author = {Maja Franz and Pìa Zurita and Markus Diefenthaler and Wolfgang Mauerer},
   title = {Co-Design of Quantum Hardware and Algorithms in Nuclear and High Energy Physics},
-  booktitle = {Proceedings of the 26th International Conference on Computing in High Energy \& Nuclear Physics},
-  year = {2023},
-  note = {to appear},
+  year = {2024}
+  doi = {10.1051/epjconf/202429512002},
+  journal = {EPJ Web of Conf.},
+  pages = {12002},
+  url = {https://doi.org/10.1051/epjconf/202429512002},
+  userd = {CHEP '23},
+  volume = {295},
 }
 ```
 ## Setup
